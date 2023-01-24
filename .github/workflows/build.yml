@@ -1,22 +1,49 @@
-name: Sonar
+name: SonarQube
+
 
 on:
   workflow_dispatch:
 
+
 jobs:
-  test:
+  build:
+    name: Build
     runs-on: ubuntu-latest
     steps:
-      - uses: phwt/sonarqube-quality-gate-action@v1
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
+
+      - uses: sonarsource/sonarqube-scan-action@master
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+          
+      - name: SonarQube Quality Gate Report
+        uses: phwt/sonarqube-quality-gate-action@v1.3.2
         id: quality-gate-check
         with:
-          sonar-project-key: ${{ secrets.SONAR_PROJECT_KEY }}
+#           sonar-project-key: ${{ secrets.SONAR_PROJECT_KEY }}
           sonar-host-url: ${{ secrets.SONAR_HOST_URL }}
           sonar-token: ${{ secrets.SONAR_TOKEN }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+#           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Output result
         run: |
           echo "${{ steps.quality-gate-check.outputs.project-status }}"
           echo "${{ steps.quality-gate-check.outputs.quality-gate-result }}"
+
+      #to get test result file 
+      - name: Upload Results
+        uses: actions/upload-artifact@v2
+        with:
+          name: sonar-results 
+          path: .scannerwork/report-task.txt
+
+      # If you wish to fail your job when the Quality Gate is red, uncomment the
+      # following lines. This would typically be used to fail a deployment.
+      - uses: sonarsource/sonarqube-quality-gate-action@master
+        timeout-minutes: 5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
